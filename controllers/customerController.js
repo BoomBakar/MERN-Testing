@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const joi = require('joi');
 const Customer = require('../models/customers');
+const customerDto = require('../dto/userdto');
 
 const customerController = {
     home(req, res, next) {
@@ -32,9 +33,9 @@ const customerController = {
             balance: req.body.balance,
             dateOfBirth: req.body.dateOfBirth
         });
-    
+        const userDto = new customerDto(customer);
         await customer.save()
-        .then(result => res.send(result))
+        .then(res.json({user: userDto}))
         .catch(err => res.send(err.message));
     
     },
@@ -50,11 +51,11 @@ const customerController = {
             res.status(400).send(result.error.details[0].message);
             return;
         }
+        let custom = await Customer.exists({email: req.body.email, balance: req.body.balance});
 
-
-        if(await Customer.exists({email: req.body.email, balance: req.body.balance}))
+        if(custom)
         {
-            res.send('Login Successful');
+            return res.status(200).json(custom);
         }
         else
         {
