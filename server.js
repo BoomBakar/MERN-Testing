@@ -3,10 +3,12 @@ const express = require('express');
 const app = express();
 const dotenv = require('dotenv').config();
 const dbConnect = require('./database/db');
+const router = require('./routes/router');
 
-app.get('/', (req,res) => {
-    res.send('hello world');
-})
+
+app.use(express.json());
+
+app.use(router);
 
 dbConnect();
 
