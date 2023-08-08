@@ -3,6 +3,8 @@ const app = express();
 const joi = require('joi');
 const Customer = require('../models/customers');
 const customerDto = require('../dto/userdto');
+const jwt = require('jsonwebtoken');
+const JWTService = require('../services/jwt');
 
 const customerController = {
     home(req, res, next) {
@@ -26,18 +28,34 @@ const customerController = {
             res.status(400).send(result.error.details[0].message);
             return;
         }
-    
+        let accessToken;
+        let refreshToken;
         const customer = new Customer({
             name: req.body.name,
             email: req.body.email,
             balance: req.body.balance,
             dateOfBirth: req.body.dateOfBirth
         });
+        accessToken = JWTService.signAccessToken({id: customer._id, email: customer.email}, '1h');
+        refreshToken = JWTService.signRefreshToken({id: customer._id, email: customer.email}, '10h');
+
+        // store refresh token in db
+        JWTService.storeRefreshToken(refreshToken, customer._id);
+        //store access token in cookie
+        res.cookie('accessToken', accessToken, {
+            maxAge: 60 * 60 * 1000,
+            httpOnly: true
+        });
+        // store refresh token in cookie
+        res.cookie('refreshToken', refreshToken, {
+            maxAge: 10 * 60 * 60 * 1000,
+            httpOnly: true
+        });
         const userDto = new customerDto(customer);
         await customer.save()
-        .then(res.json({user: userDto}))
+        .then(res.json({user: userDto, auth: true, token: accessToken, refreshToken: refreshToken}))
         .catch(err => res.send(err.message));
-    
+        
     },
     async login(req,res,next) {
         const schema = joi.object({
@@ -55,6 +73,23 @@ const customerController = {
 
         if(custom)
         {
+            let accessToken;
+            let refreshToken;
+            accessToken = JWTService.signAccessToken({id: customer._id, email: customer.email}, '1h');
+            refreshToken = JWTService.signRefreshToken({id: customer._id, email: customer.email}, '10h');
+
+            // store refresh token in db
+            JWTService.storeRefreshToken(refreshToken, customer._id);
+            //store access token in cookie
+            res.cookie('accessToken', accessToken, {
+                maxAge: 60 * 60 * 1000,
+                httpOnly: true
+            });
+            // store refresh token in cookie
+            res.cookie('refreshToken', refreshToken, {
+                maxAge: 10 * 60 * 60 * 1000,
+                httpOnly: true
+            });
             return res.status(200).json(custom);
         }
         else
